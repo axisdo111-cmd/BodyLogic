@@ -19,4 +19,21 @@ Le projet met l’accent sur la **séparation stricte des responsabilités**, la
 ---
 
 ## 🧱 Architecture
+BodyLogic/
+│
+├── core/ # Moteur métier (TypeScript pur)
+│ ├── errors.ts # Erreurs métier typées
+│ └── index.ts # API publique du moteur
+│
+├── app/ # Interface Expo / React Native
+│ ├── App.tsx
+│ ├── screens/
+│ └── components/
+│
+├── App.tsx # Point d’entrée Expo
+├── tests/ # Tests (à venir)
+├── .gitignore
+├── package.json
+└── README.md
+
 
