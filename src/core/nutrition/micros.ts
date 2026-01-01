@@ -1,5 +1,6 @@
 import { Food, Micros } from "../foods/food.types";
 import { Meal } from "../meals/meal.types";
+import { computeMacros } from "./macros";
 
 /**
  * Micros à zéro (helper)
@@ -52,6 +53,7 @@ export function sumMicros(list: Micros[]): Micros {
 
 /**
  * Calcule les micros totaux d’un repas
+ * (conversion quantity + unit → grammes via computeMacros)
  */
 export function microsForMeal(meal: Meal): Micros {
   const microsList: Micros[] = [];
@@ -61,7 +63,12 @@ export function microsForMeal(meal: Meal): Micros {
 
     if (!food.microsPer100g) continue;
 
-    const factor = item.grams / 100;
+    // On passe par le moteur existant (source de vérité)
+    const macros = computeMacros(food, item.quantity, item.unit);
+
+    // facteur par rapport à 100g
+    const factor = macros.calories / food.macrosPer100g.calories;
+
     microsList.push(scaleMicros(food.microsPer100g, factor));
   }
 

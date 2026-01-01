@@ -1,29 +1,91 @@
 import { Food } from "../foods/food.types";
+import { FoodUnit } from "../foods/food.types";
+import { searchFoods } from "../foods/food.search";
 import { EngineConfig, FoodCategory } from "../engine/engine.config";
-import { Meal, MealItem } from "./meal.types";
+import { Meal, MealItem, MealWithAnalysis } from "./meal.types";
+import { macrosForMeal } from "../nutrition/macros";
+import { scoreMacrosSimple } from "../nutrition/scoring";
+import { microsForMeal } from "../nutrition/micros";
 
-export type MealGenerationRequest = {
-  foods: Food[];
-  config: EngineConfig;
-};
+/* ============================================================================
+ * Utils
+ * ========================================================================== */
 
 function clampInt(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.floor(n)));
 }
 
 /**
- * Heuristique stable : on trie les foods par "densité protéine"
- * (protein per calorie) puis on cycle pour fabriquer des candidats.
+ * Convertit une quantité interne (en grammes logiques)
+ * vers quantity + unit selon le food
+ */
+
+function gramsToQuantity(
+  food: Food,
+  grams: number
+): { quantity: number; unit: FoodUnit } {
+  const unit: FoodUnit = food.defaultUnit ?? "g";
+
+  if (unit === "g") {
+    return { quantity: grams, unit };
+  }
+
+  const gramsPerUnit = food.units?.[unit];
+  if (!gramsPerUnit || gramsPerUnit <= 0) {
+    return { quantity: grams, unit: "g" };
+  }
+
+  return {
+    quantity: grams / gramsPerUnit,
+    unit,
+  };
+}
+
+/* ============================================================================
+ * Recherche simple (UX)
+ * ========================================================================== */
+
+export function generateMealFromQuery(
+  query: string,
+  quantity = 1
+): Meal {
+  const foods = searchFoods(query);
+  if (!foods.length) {
+    throw new Error(`No food found for '${query}'`);
+  }
+
+  const food = foods[0];
+  const unit = food.defaultUnit ?? "g";
+
+  return {
+    items: [
+      {
+        food,
+        quantity,
+        unit,
+      },
+    ],
+  };
+}
+
+/* ============================================================================
+ * Génération automatique
+ * ========================================================================== */
+
+/**
+ * Heuristique stable :
+ * - priorité à la densité protéique
+ * - tri déterministe
  */
 function rankFoodsForGeneration(foods: Food[]): Food[] {
   return [...foods].sort((a, b) => {
     const aCal = Math.max(1, a.macrosPer100g.calories);
     const bCal = Math.max(1, b.macrosPer100g.calories);
+
     const aScore = a.macrosPer100g.protein / aCal;
     const bScore = b.macrosPer100g.protein / bCal;
-    // Desc
+
     if (bScore !== aScore) return bScore - aScore;
-    // Tie-break stable: name then id
     if (a.name !== b.name) return a.name.localeCompare(b.name);
     return a.id.localeCompare(b.id);
   });
@@ -35,28 +97,24 @@ function pickFromCategory(
   startIndex: number
 ): Food | null {
   const filtered = foods.filter((f) => f.category === category);
-  if (filtered.length === 0) return null;
+  if (!filtered.length) return null;
   return filtered[startIndex % filtered.length];
-}       
-
-function buildMealItems(
-  foodsRanked: Food[],
-  startIndex: number,
-  itemsPerMeal: number,
-  grams: number
-): MealItem[] {
-  const items: MealItem[] = [];
-  const n = foodsRanked.length;
-  for (let i = 0; i < itemsPerMeal; i++) {
-    const idx = (startIndex + i) % n;
-    items.push({ food: foodsRanked[idx], grams });
-  }
-  return items;
 }
 
-export function generateMeals(req: MealGenerationRequest): Meal[] {
+/* ============================================================================
+ * Générateur principal
+ * ========================================================================== */
+
+export type MealGenerationRequest = {
+  foods: Food[];
+  config: EngineConfig;
+};
+
+export function generateMeals(
+  req: MealGenerationRequest
+): MealWithAnalysis[] {
   const foodsRanked = rankFoodsForGeneration(req.foods);
-  if (foodsRanked.length === 0) return [];
+  if (!foodsRanked.length) return [];
 
   const itemsPerMeal = clampInt(req.config.itemsPerMeal, 1, 8);
   const candidates = clampInt(req.config.candidatesToGenerate, 1, 500);
@@ -66,36 +124,53 @@ export function generateMeals(req: MealGenerationRequest): Meal[] {
       ? [...req.config.portionGramsOptions]
       : [100];
 
-  // Stable: tri asc pour portions (reproductible)
   gramsOptions.sort((a, b) => a - b);
 
-  const meals: Meal[] = [];
+  const results: MealWithAnalysis[] = [];
   let cursor = 0;
 
-for (let i = 0; i < candidates; i++) {
-  const grams = gramsOptions[i % gramsOptions.length];
-  const items: MealItem[] = [];
-  const used = new Map<string, number>();
+  for (let i = 0; i < candidates; i++) {
+    const grams = gramsOptions[i % gramsOptions.length];
+    const items: MealItem[] = [];
+    const used = new Map<string, number>();
 
-  for (const category of req.config.categoryPlan) {
-    const food = pickFromCategory(foodsRanked, category, cursor);
-    if (!food) continue;
+    for (const category of req.config.categoryPlan) {
+      const food = pickFromCategory(foodsRanked, category, cursor);
+      if (!food) continue;
 
-    const count = used.get(food.id) ?? 0;
-    if (count >= req.config.maxSameFoodPerMeal) continue;
+      const count = used.get(food.id) ?? 0;
+      if (count >= req.config.maxSameFoodPerMeal) continue;
 
-    used.set(food.id, count + 1);
-    items.push({ food, grams });
-    cursor++;
-  }
+      used.set(food.id, count + 1);
 
-  if (items.length > 0) {
-    meals.push({
+      const { quantity, unit } = gramsToQuantity(food, grams);
+      items.push({ food, quantity, unit });
+
+      cursor++;
+      if (items.length >= itemsPerMeal) break;
+    }
+
+    if (!items.length) continue;
+
+    const meal: Meal = {
       id: `meal_${i + 1}`,
       items,
+    };
+
+    const macros = macrosForMeal(meal);
+    const micros = microsForMeal(meal);
+    const score = scoreMacrosSimple(macros);
+
+    results.push({
+      meal,
+      macros,
+      micros,
+      score,
     });
   }
-}
-  return meals;
-}
 
+  // 🥇 meilleurs repas en premier
+  results.sort((a, b) => b.score - a.score);
+
+  return results;
+}

@@ -40,3 +40,30 @@ export function scoreMeal(args: {
 
   return Math.round(final * 10) / 10;
 }
+
+/**
+ * Scoring simple et autonome (0–100)
+ * Utilisé par le générateur de repas
+ */
+export function scoreMacrosSimple(macros: Macros): number {
+  const calories = Math.max(1, macros.calories);
+
+  // 💪 densité protéique
+  const proteinDensity = macros.protein / calories; // ~0.02–0.06
+  const proteinScore = Math.min(40, (proteinDensity / 0.04) * 40);
+
+  // 🔥 calories raisonnables
+  const calorieScore =
+    calories < 400
+      ? (calories / 400) * 30
+      : calories > 700
+      ? (700 / calories) * 30
+      : 30;
+
+  // ⚖️ équilibre simple
+  const total = macros.protein + macros.carbs + macros.fat;
+  const balanceScore =
+    total > 0 ? Math.min(30, (macros.protein / total) * 30) : 0;
+
+  return Math.round(proteinScore + calorieScore + balanceScore);
+}

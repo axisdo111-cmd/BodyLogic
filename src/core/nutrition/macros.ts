@@ -1,7 +1,9 @@
-import { Macros } from "../foods/food.types";
-import { Food } from "../foods/food.types";
+import { Food, FoodUnit, Macros } from "../foods/food.types";
 import { Meal } from "../meals/meal.types";
 
+/**
+ * Multiplie des macros par un facteur
+ */
 export function scaleMacros(macros: Macros, factor: number): Macros {
   if (!Number.isFinite(factor) || factor < 0) {
     throw new Error("scaleMacros: factor must be a finite positive number");
@@ -14,6 +16,9 @@ export function scaleMacros(macros: Macros, factor: number): Macros {
   };
 }
 
+/**
+ * Somme une liste de macros
+ */
 export function sumMacros(list: Macros[]): Macros {
   return list.reduce<Macros>(
     (acc, m) => ({
@@ -26,6 +31,9 @@ export function sumMacros(list: Macros[]): Macros {
   );
 }
 
+/**
+ * Calcule les macros pour un aliment donné en grammes
+ */
 export function macrosForFood(food: Food, grams: number): Macros {
   if (!Number.isFinite(grams) || grams <= 0) {
     throw new Error("macrosForFood: grams must be a finite number > 0");
@@ -34,7 +42,41 @@ export function macrosForFood(food: Food, grams: number): Macros {
   return scaleMacros(food.macrosPer100g, factor);
 }
 
+/**
+ * Calcule les macros totales d’un repas
+ */
 export function macrosForMeal(meal: Meal): Macros {
-  const itemsMacros = meal.items.map((it) => macrosForFood(it.food, it.grams));
+  const itemsMacros = meal.items.map((it) =>
+    computeMacros(it.food, it.quantity, it.unit)
+  );
   return sumMacros(itemsMacros);
+}
+
+
+/**
+ * UX helper : quantité + unité → macros
+ * (conversion vers grammes puis délégation à macrosForFood)
+ */
+export function computeMacros(
+  food: Food,
+  quantity: number,
+  unit: FoodUnit = "g"
+): Macros {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw new Error("computeMacros: quantity must be a finite number > 0");
+  }
+
+  let grams = quantity;
+
+  if (unit !== "g") {
+    const gramsPerUnit = food.units?.[unit];
+    if (!gramsPerUnit) {
+      throw new Error(
+        `computeMacros: unit '${unit}' not defined for food '${food.id}'`
+      );
+    }
+    grams = quantity * gramsPerUnit;
+  }
+
+  return macrosForFood(food, grams);
 }

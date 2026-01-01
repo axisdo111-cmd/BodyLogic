@@ -1,17 +1,22 @@
-import { Food, Macros } from "../foods/food.types";
+import { Food, FoodUnit, Macros, Micros } from "../foods/food.types";
 
 export interface MealItem {
   food: Food;
-  grams: number; // portion en grammes
+  quantity: number;
+  unit: FoodUnit;
 }
 
 export interface Meal {
-  id: string;
-  name?: string;
+  id?: string;
   items: MealItem[];
 }
 
+/**
+ * Résultat enrichi du générateur
+ */
 export interface MealWithAnalysis {
   meal: Meal;
   macros: Macros;
+  micros: Micros;
+  score: number; // scoreMacrosSimple
 }
