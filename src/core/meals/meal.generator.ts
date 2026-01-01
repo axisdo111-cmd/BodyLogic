@@ -4,8 +4,13 @@ import { searchFoods } from "../foods/food.search";
 import { EngineConfig, FoodCategory } from "../engine/engine.config";
 import { Meal, MealItem, MealWithAnalysis } from "./meal.types";
 import { macrosForMeal } from "../nutrition/macros";
-import { scoreMacrosSimple } from "../nutrition/scoring";
 import { microsForMeal } from "../nutrition/micros";
+import { scoreMacrosSimple } from "../nutrition/scoring";
+
+import {
+  DEFAULT_MACRO_TARGETS,
+  scoreMacrosAgainstTargets,
+} from "../nutrition/targets";
 
 /* ============================================================================
  * Utils
@@ -158,8 +163,19 @@ export function generateMeals(
     };
 
     const macros = macrosForMeal(meal);
+    
     const micros = microsForMeal(meal);
-    const score = scoreMacrosSimple(macros);
+    const simpleScore = scoreMacrosSimple(macros);
+    const score = scoreMacrosAgainstTargets({
+      macros,
+      targets: DEFAULT_MACRO_TARGETS,
+      tolerancePct: {
+        calories: 0.15,
+        protein: 0.2,
+        carbs: 0.25,
+        fat: 0.25,
+      },
+    });
 
     results.push({
       meal,

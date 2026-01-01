@@ -67,3 +67,27 @@ export function scoreMacrosSimple(macros: Macros): number {
 
   return Math.round(proteinScore + calorieScore + balanceScore);
 }
+
+import { Meal } from "../meals/meal.types";
+
+/**
+ * Score de densité nutritionnelle simple
+ * (priorité protéines / calories)
+ */
+export function scoreMealDensity(meal: Meal): number {
+  let totalProtein = 0;
+  let totalCalories = 0;
+
+  for (const item of meal.items) {
+    const food = item.food;
+    const factor = item.quantity / 100;
+
+    totalProtein += food.macrosPer100g.protein * factor;
+    totalCalories += food.macrosPer100g.calories * factor;
+  }
+
+  if (totalCalories <= 0) return 0;
+
+  const density = totalProtein / totalCalories; // ~0.02–0.06
+  return Math.min(100, Math.round((density / 0.05) * 100));
+}

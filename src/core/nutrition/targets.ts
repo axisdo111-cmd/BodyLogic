@@ -1,4 +1,5 @@
 import { Macros } from "../foods/food.types";
+import { MacroTolerancePct, ScoringWeights } from "../engine/engine.config";
 
 /**
  * Objectif nutritionnel journalier ou par repas
@@ -157,4 +158,139 @@ export function perMealTargetsFromDaily(args: {
     carbs: d.carbs / div,
     fat: d.fat / div,
   };
+}
+
+/**
+ * Score continu (0–100) indiquant à quel point les macros
+ * sont proches des ranges cibles.
+ *
+ * - 100 = parfaitement centré dans toutes les plages
+ * - 0 = totalement hors cible
+ */
+export function scoreMacrosAgainstRanges(
+  macros: Macros,
+  ranges: MacroTargetsRange
+): number {
+  function scoreOne(
+    value: number,
+    range: MacroRange
+  ): number {
+    if (!Number.isFinite(value)) return 0;
+
+    const { min, max } = range;
+    if (min === max) {
+      return value === min ? 1 : 0;
+    }
+
+    // Centre de la plage
+    const center = (min + max) / 2;
+    const halfWidth = (max - min) / 2;
+
+    // distance normalisée au centre
+    const dist = Math.abs(value - center);
+    const score = Math.max(0, 1 - dist / halfWidth);
+
+    return score;
+  }
+
+  const scores = {
+    calories: scoreOne(macros.calories, ranges.calories),
+    protein: scoreOne(macros.protein, ranges.protein),
+    carbs: scoreOne(macros.carbs, ranges.carbs),
+    fat: scoreOne(macros.fat, ranges.fat),
+  };
+
+  // pondération PRO (protéines prioritaires)
+  const weights = {
+    calories: 3,
+    protein: 4,
+    carbs: 2,
+    fat: 2,
+  };
+
+  const total =
+    scores.calories * weights.calories +
+    scores.protein * weights.protein +
+    scores.carbs * weights.carbs +
+    scores.fat * weights.fat;
+
+  const max =
+    weights.calories +
+    weights.protein +
+    weights.carbs +
+    weights.fat;
+
+  return Math.round((total / max) * 100);
+}
+
+/**
+ * Helper haut niveau :
+ * Macros → targets → ranges → score
+ *
+ * Utilisable directement par le générateur
+ */
+export function scoreMacrosAgainstTargets(args: {
+  macros: Macros;
+  targets: Macros;
+  tolerancePct: { calories: number; protein: number; carbs: number; fat: number };
+}): number {
+  const ranges = targetsToRanges({
+    targets: args.targets,
+    tolerancesPct: args.tolerancePct,
+  });
+
+  return scoreMacrosAgainstRanges(args.macros, ranges);
+}
+
+/**
+ * Score macros vs targets avec :
+ * - tolérances %
+ * - pondérations configurables
+ */
+export function scoreMacrosAgainstTargetsWithWeights(args: {
+  macros: Macros;
+  targets: Macros;
+  tolerancesPct: MacroTolerancePct;
+  weights: ScoringWeights;
+}): number {
+  const { macros, targets, tolerancesPct, weights } = args;
+
+  const ranges = targetsToRanges({
+    targets,
+    tolerancesPct,
+  });
+
+  function scoreOne(value: number, range: MacroRange): number {
+    if (!Number.isFinite(value)) return 0;
+
+    const { min, max } = range;
+    if (min === max) return value === min ? 1 : 0;
+
+    const center = (min + max) / 2;
+    const halfWidth = (max - min) / 2;
+    const dist = Math.abs(value - center);
+
+    return Math.max(0, 1 - dist / halfWidth);
+  }
+
+  const scores = {
+    calories: scoreOne(macros.calories, ranges.calories),
+    protein: scoreOne(macros.protein, ranges.protein),
+    carbs: scoreOne(macros.carbs, ranges.carbs),
+    fat: scoreOne(macros.fat, ranges.fat),
+  };
+
+  const total =
+    scores.calories * weights.calories +
+    scores.protein * weights.protein +
+    scores.carbs * weights.carbs +
+    scores.fat * weights.fat;
+
+  const max =
+    weights.calories +
+    weights.protein +
+    weights.carbs +
+    weights.fat;
+
+  return Math.round((total / max) * 100);
 }
