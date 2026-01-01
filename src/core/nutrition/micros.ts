@@ -55,6 +55,21 @@ export function sumMicros(list: Micros[]): Micros {
   );
 }
 
+/**
+ * Soustrait des micros (a - b), clamp à 0
+ * Utile pour calculer le "reste à consommer"
+ */
+export function subtractMicros(a: Micros, b: Micros): Micros {
+  return {
+    fiber: Math.max(0, a.fiber - b.fiber),
+    sodiumMg: Math.max(0, a.sodiumMg - b.sodiumMg),
+    potassiumMg: Math.max(0, a.potassiumMg - b.potassiumMg),
+    calciumMg: Math.max(0, a.calciumMg - b.calciumMg),
+    ironMg: Math.max(0, a.ironMg - b.ironMg),
+    vitaminCMg: Math.max(0, a.vitaminCMg - b.vitaminCMg),
+  };
+}
+
 /* ============================================================================
  * Core logic
  * ========================================================================== */

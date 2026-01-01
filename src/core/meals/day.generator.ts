@@ -1,5 +1,4 @@
 import { MealWithAnalysis } from "./meal.types";
-import { EngineConfig } from "../engine/engine.config";
 import { Macros } from "../foods/food.types";
 import { sumMacros } from "../nutrition/macros";
 

@@ -294,3 +294,25 @@ export function scoreMacrosAgainstTargetsWithWeights(args: {
 
   return Math.round((total / max) * 100);
 }
+
+/**
+ * Calcule les macros restants à consommer
+ * (auto-ajustement simple, clampé à 0)
+ *
+ * Utilisé pour :
+ * - adapter les cibles des repas suivants
+ * - informer le scoring / suggestions
+ */
+export function remainingTargets(args: {
+  targets: Macros;
+  consumed: Macros;
+}): Macros {
+  const { targets, consumed } = args;
+
+  return {
+    calories: clampToNonNegative(targets.calories - consumed.calories),
+    protein: clampToNonNegative(targets.protein - consumed.protein),
+    carbs: clampToNonNegative(targets.carbs - consumed.carbs),
+    fat: clampToNonNegative(targets.fat - consumed.fat),
+  };
+}
