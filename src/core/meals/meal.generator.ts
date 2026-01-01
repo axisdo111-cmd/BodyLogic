@@ -4,13 +4,13 @@ import { searchFoods } from "../foods/food.search";
 import { EngineConfig, FoodCategory } from "../engine/engine.config";
 import { Meal, MealItem, MealWithAnalysis } from "./meal.types";
 import { macrosForMeal } from "../nutrition/macros";
-import { microsForMeal } from "../nutrition/micros";
 import { scoreMacrosSimple } from "../nutrition/scoring";
-
-import {
-  DEFAULT_MACRO_TARGETS,
-  scoreMacrosAgainstTargets,
-} from "../nutrition/targets";
+import { microsForMeal } from "../nutrition/micros";
+import { filterFoodsByConstraints } from "../engine/user.constraints";
+import { computeMacroWarnings } from "../nutrition/warnings";
+import { targetsToRanges } from "../nutrition/targets";
+import { DEFAULT_MACRO_TARGETS } from "../nutrition/targets";
+import { generateMealSuggestions } from "./suggestions";
 
 /* ============================================================================
  * Utils
@@ -118,7 +118,13 @@ export type MealGenerationRequest = {
 export function generateMeals(
   req: MealGenerationRequest
 ): MealWithAnalysis[] {
-  const foodsRanked = rankFoodsForGeneration(req.foods);
+  const foodsFiltered = filterFoodsByConstraints(
+  req.foods,
+  req.config.userConstraints ?? {}
+  );
+
+  const foodsRanked = rankFoodsForGeneration(foodsFiltered);
+
   if (!foodsRanked.length) return [];
 
   const itemsPerMeal = clampInt(req.config.itemsPerMeal, 1, 8);
@@ -133,6 +139,11 @@ export function generateMeals(
 
   const results: MealWithAnalysis[] = [];
   let cursor = 0;
+
+  const macroRanges = targetsToRanges({
+    targets: DEFAULT_MACRO_TARGETS,
+    tolerancesPct: req.config.tolerancesPct,
+  });
 
   for (let i = 0; i < candidates; i++) {
     const grams = gramsOptions[i % gramsOptions.length];
@@ -163,18 +174,14 @@ export function generateMeals(
     };
 
     const macros = macrosForMeal(meal);
-    
     const micros = microsForMeal(meal);
-    const simpleScore = scoreMacrosSimple(macros);
-    const score = scoreMacrosAgainstTargets({
-      macros,
-      targets: DEFAULT_MACRO_TARGETS,
-      tolerancePct: {
-        calories: 0.15,
-        protein: 0.2,
-        carbs: 0.25,
-        fat: 0.25,
-      },
+    const score = scoreMacrosSimple(macros);
+    const warnings = computeMacroWarnings(macros, macroRanges);
+
+    const suggestions = generateMealSuggestions({
+      meal,
+      warnings,
+      config: req.config,
     });
 
     results.push({
@@ -182,6 +189,8 @@ export function generateMeals(
       macros,
       micros,
       score,
+      warnings,
+      suggestions,
     });
   }
 

@@ -91,3 +91,4 @@ export function scoreMealDensity(meal: Meal): number {
   const density = totalProtein / totalCalories; // ~0.02–0.06
   return Math.min(100, Math.round((density / 0.05) * 100));
 }
+

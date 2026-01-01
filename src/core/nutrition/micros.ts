@@ -1,9 +1,13 @@
 import { Food, Micros } from "../foods/food.types";
 import { Meal } from "../meals/meal.types";
-import { computeMacros } from "./macros";
+import { quantityToGrams } from "./units";
+
+/* ============================================================================
+ * Helpers
+ * ========================================================================== */
 
 /**
- * Micros à zéro (helper)
+ * Micros à zéro (valeur neutre)
  */
 export function zeroMicros(): Micros {
   return {
@@ -21,7 +25,7 @@ export function zeroMicros(): Micros {
  */
 export function scaleMicros(m: Micros, factor: number): Micros {
   if (!Number.isFinite(factor) || factor < 0) {
-    throw new Error("scaleMicros: factor must be >= 0");
+    throw new Error("scaleMicros: factor must be a finite number >= 0");
   }
 
   return {
@@ -51,9 +55,17 @@ export function sumMicros(list: Micros[]): Micros {
   );
 }
 
+/* ============================================================================
+ * Core logic
+ * ========================================================================== */
+
 /**
  * Calcule les micros totaux d’un repas
- * (conversion quantity + unit → grammes via computeMacros)
+ *
+ * ✔ source de vérité = quantity + unit
+ * ✔ conversion → grammes via quantityToGrams
+ * ✔ cohérent avec macrosForMeal
+ * ✔ aucun champ "grams" requis
  */
 export function microsForMeal(meal: Meal): Micros {
   const microsList: Micros[] = [];
@@ -63,11 +75,11 @@ export function microsForMeal(meal: Meal): Micros {
 
     if (!food.microsPer100g) continue;
 
-    // On passe par le moteur existant (source de vérité)
-    const macros = computeMacros(food, item.quantity, item.unit);
+    const grams = quantityToGrams(food, item.quantity, item.unit);
 
-    // facteur par rapport à 100g
-    const factor = macros.calories / food.macrosPer100g.calories;
+    if (!Number.isFinite(grams) || grams <= 0) continue;
+
+    const factor = grams / 100;
 
     microsList.push(scaleMicros(food.microsPer100g, factor));
   }

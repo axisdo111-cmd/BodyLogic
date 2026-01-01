@@ -44,7 +44,7 @@ export function macrosForFood(food: Food, grams: number): Macros {
 
 /**
  * Calcule les macros totales d’un repas
- */
+ */                                                         
 export function macrosForMeal(meal: Meal): Macros {
   const itemsMacros = meal.items.map((it) =>
     computeMacros(it.food, it.quantity, it.unit)

@@ -104,4 +104,13 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   },
 };
 
+import { UserConstraints } from "./user.constraints";
 
+export interface EngineConfig {
+  // … EXISTANT …
+
+  /**
+   * Contraintes utilisateur (allergies, exclusions, régimes)
+   */
+  userConstraints?: UserConstraints;
+}

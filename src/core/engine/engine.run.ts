@@ -1,14 +1,16 @@
 import { Food } from "../foods/food.types";
-import { Macros } from "../foods/food.types";
+import { Macros, Micros } from "../foods/food.types";
 import { FoodConstraints, filterFoods } from "../foods/filters";
 import { EngineConfig } from "./engine.config";
+
 import { generateMeals } from "../meals/meal.generator";
-import { Meal } from "../meals/meal.types";
-import { macrosForMeal } from "../nutrition/macros";
+import { Meal, MealWithAnalysis } from "../meals/meal.types";
+
 import { validateMeal } from "../meals/meal.validator";
-import { scoreMeal } from "../nutrition/scoring";
-import { microsForMeal } from "../nutrition/micros";
-import { Micros } from "../foods/food.types";
+
+/* ============================================================================
+ * Types
+ * ========================================================================== */
 
 export type EngineContext = {
   foods: Food[];
@@ -33,25 +35,37 @@ export type EngineMeta = {
 };
 
 export type EngineResult = {
-  rankedMeals: RankedMeal[]; // triés par score desc
+  rankedMeals: RankedMeal[];
   best: RankedMeal | null;
   meta: EngineMeta;
 };
 
+/* ============================================================================
+ * Engine runner (PRO)
+ * ========================================================================== */
+
 export function runEngine(ctx: EngineContext): EngineResult {
-  // 1) Filters
+  /* ------------------------------------------------------------------------
+   * 1) Filtrage des aliments
+   * ---------------------------------------------------------------------- */
   const eligibleFoods = filterFoods(ctx.foods, ctx.constraints);
 
-  // 2) Meal generation (candidats)
-  const candidates = generateMeals({ foods: eligibleFoods, config: ctx.config });
+  /* ------------------------------------------------------------------------
+   * 2) Génération des repas (déjà analysés)
+   * ---------------------------------------------------------------------- */
+  const generated: MealWithAnalysis[] = generateMeals({
+    foods: eligibleFoods,
+    config: ctx.config,
+  });
 
-  // 3) Macro computation + 4) Validation + 5) Scoring
-  const ranked: RankedMeal[] = [];
+  /* ------------------------------------------------------------------------
+   * 3) Validation & sélection
+   * ---------------------------------------------------------------------- */
+  const rankedMeals: RankedMeal[] = [];
   let rejected = 0;
 
-  for (const meal of candidates) {
-    const macros = macrosForMeal(meal);
-    const micros = microsForMeal(meal);
+  for (const analysis of generated) {
+    const { meal, macros, micros, score } = analysis;
 
     const validation = validateMeal({
       meal,
@@ -65,30 +79,31 @@ export function runEngine(ctx: EngineContext): EngineResult {
       continue;
     }
 
-    const score = scoreMeal({
+    rankedMeals.push({
+      meal,
       macros,
       micros,
-      targets: ctx.targets,
-      config: ctx.config,
+      score,
     });
-
-    ranked.push({ meal, macros, micros, score });
   }
 
-  // 6) Ranked results
-  ranked.sort((a, b) => b.score - a.score);
+  /* ------------------------------------------------------------------------
+   * 4) Classement final
+   * ---------------------------------------------------------------------- */
+  rankedMeals.sort((a, b) => b.score - a.score);
 
-  const result: EngineResult = {
-    rankedMeals: ranked,
-    best: ranked.length > 0 ? ranked[0] : null,
+  /* ------------------------------------------------------------------------
+   * 5) Résultat moteur
+   * ---------------------------------------------------------------------- */
+  return {
+    rankedMeals,
+    best: rankedMeals.length > 0 ? rankedMeals[0] : null,
     meta: {
       foodsTotal: ctx.foods.length,
       foodsEligible: eligibleFoods.length,
-      mealsGenerated: candidates.length,
-      mealsValid: ranked.length,
+      mealsGenerated: generated.length,
+      mealsValid: rankedMeals.length,
       mealsRejected: rejected,
     },
   };
-
-  return result;
 }

@@ -31,7 +31,6 @@ function f(
   };
 }
 
-
 /**
  * Base alimentaire statique
  * Valeurs approximatives, standardisées / 100g

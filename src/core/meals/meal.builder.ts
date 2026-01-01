@@ -1,10 +1,10 @@
 import { Meal, MealItem } from "./meal.types";
-import { Food } from "../foods/food.types";
+import { Food, FoodUnit } from "../foods/food.types";
 
 /**
  * Builder immuable pour construire un Meal de manière contrôlée.
  * - aucune mutation externe
- * - recalcul délégué aux modules nutrition
+ * - cohérent avec quantity + unit
  * - utilisable par UI, tests, ou générateur
  */
 export class MealBuilder {
@@ -14,57 +14,75 @@ export class MealBuilder {
     this.items = items;
   }
 
-  /**
-   * Crée un builder vide
-   */
+  /* ============================================================================
+   * Factories
+   * ========================================================================== */
+
   static empty(): MealBuilder {
     return new MealBuilder([]);
   }
 
-  /**
-   * Crée un builder à partir d’un meal existant (clone)
-   */
   static fromMeal(meal: Meal): MealBuilder {
     return new MealBuilder([...meal.items]);
   }
 
+  /* ============================================================================
+   * Mutations immuables
+   * ========================================================================== */
+
   /**
-   * Ajoute un aliment avec une portion donnée.
-   * - grams doit être > 0
-   * - retourne un NOUVEAU builder
+   * Ajoute un aliment avec quantité + unité.
    */
-  addFood(food: Food, grams: number): MealBuilder {
-    if (!Number.isFinite(grams) || grams <= 0) {
-      throw new Error("MealBuilder.addFood: grams must be a finite number > 0");
+  addFood(
+    food: Food,
+    quantity: number,
+    unit: FoodUnit = food.defaultUnit ?? "g"
+  ): MealBuilder {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new Error("MealBuilder.addFood: quantity must be > 0");
     }
 
     return new MealBuilder([
       ...this.items,
-      { food, grams },
+      { food, quantity, unit },
     ]);
   }
 
   /**
-   * Met à jour la portion d’un item existant (par index).
-   * Utile pour UI (slider, +/-).
+   * Met à jour la quantité d’un item existant (par index).
    */
-  updatePortion(index: number, grams: number): MealBuilder {
-    if (!Number.isFinite(grams) || grams <= 0) {
-      throw new Error("MealBuilder.updatePortion: grams must be > 0");
+  updateQuantity(index: number, quantity: number): MealBuilder {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new Error("MealBuilder.updateQuantity: quantity must be > 0");
     }
     if (index < 0 || index >= this.items.length) {
-      throw new Error("MealBuilder.updatePortion: index out of bounds");
+      throw new Error("MealBuilder.updateQuantity: index out of bounds");
     }
 
     return new MealBuilder(
       this.items.map((it, i) =>
-        i === index ? { ...it, grams } : it
+        i === index ? { ...it, quantity } : it
       )
     );
   }
 
   /**
-   * Supprime un item par index.
+   * Met à jour l’unité (ex: g → piece).
+   */
+  updateUnit(index: number, unit: FoodUnit): MealBuilder {
+    if (index < 0 || index >= this.items.length) {
+      throw new Error("MealBuilder.updateUnit: index out of bounds");
+    }
+
+    return new MealBuilder(
+      this.items.map((it, i) =>
+        i === index ? { ...it, unit } : it
+      )
+    );
+  }
+
+  /**
+   * Supprime un item.
    */
   removeItem(index: number): MealBuilder {
     if (index < 0 || index >= this.items.length) {
@@ -78,25 +96,20 @@ export class MealBuilder {
 
   /**
    * Remplace complètement les items.
-   * Pratique pour normaliser / reconstruire un repas.
    */
   withItems(items: MealItem[]): MealBuilder {
     return new MealBuilder([...items]);
   }
 
-  /**
-   * Retourne les items (copie défensive).
-   */
+  /* ============================================================================
+   * Accès & build
+   * ========================================================================== */
+
   getItems(): MealItem[] {
     return [...this.items];
   }
 
-  /**
-   * Finalise le repas.
-   * - id requis (contrôle explicite)
-   * - name optionnel (UI)
-   */
-  build(args: { id: string; name?: string }): Meal {
+  build(args: { id: string; }): Meal {
     if (!args.id || args.id.trim().length === 0) {
       throw new Error("MealBuilder.build: id is required");
     }
@@ -107,7 +120,6 @@ export class MealBuilder {
 
     return {
       id: args.id,
-      name: args.name,
       items: [...this.items],
     };
   }
