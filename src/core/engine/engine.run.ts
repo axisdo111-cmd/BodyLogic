@@ -8,6 +8,25 @@ import { Meal, MealWithAnalysis } from "../meals/meal.types";
 
 import { validateMeal } from "../meals/meal.validator";
 
+export type CarbMealType = "high" | "moderate" | "low";
+export type ActivityLevel =
+  | "sedentary" | "occasional" | "regular" | "sporty" | "intensive" | "athletic";
+
+export type UserProfile = {
+  sex: "male" | "female";
+  age: number;
+  weight: number;
+  activityLevel: ActivityLevel;
+};
+
+export type CarbCyclingContext = {
+  dayType?: CarbMealType;
+  hasWorkoutToday?: boolean;
+  workoutDone?: boolean;
+  workoutIntensity?: number;
+  previousMealTypes?: CarbMealType[];
+};
+
 /* ============================================================================
  * Types
  * ========================================================================== */
@@ -17,6 +36,10 @@ export type EngineContext = {
   constraints: FoodConstraints;
   targets: Macros;
   config: EngineConfig;
+
+  // 🔽 NOUVEAU optionnel
+  user?: UserProfile;
+  carbCycling?: CarbCyclingContext;
 };
 
 export type RankedMeal = {

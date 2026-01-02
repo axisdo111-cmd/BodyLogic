@@ -41,3 +41,22 @@ export interface MealWithAnalysis {
   warnings: MealWarning[];
   suggestions: MealSuggestion[];
 }
+
+// meal.types.ts 
+
+export type CarbMealType = "high" | "moderate" | "low";
+
+export interface MealWithAnalysis {
+  meal: Meal;
+  macros: Macros;
+  micros: Micros;
+  score: number;
+  warnings: MealWarning[];
+  suggestions: MealSuggestion[];
+
+  // 🔽 NOUVEAU (optionnel)
+  carbType?: CarbMealType;
+
+  // utile plus tard: post-workout, workday, rest-day
+  tags?: string[];
+}

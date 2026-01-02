@@ -75,4 +75,26 @@ export interface Food {
   // ex: piece: 60 => 1 pièce = 60g
 
   popularity?: number;         // aide au tri UX
+
+  // 🔽 NOUVEAU (optionnel)
+  ingestionPhase?: IngestionPhase;
+  ingestionPriority?: number; // plus petit = plus tôt
+}
+
+/**
+ * Ingestion Order
+ */
+export type IngestionPhase =
+  | "fiber"
+  | "protein"
+  | "carb"
+  | "fat"
+  | "other";
+
+export interface Food {
+  // existant …
+
+  // 🔽 BodyLogic (OPTIONNEL)
+  ingestionPhase?: IngestionPhase;
+  ingestionPriority?: number; // override fin si besoin
 }

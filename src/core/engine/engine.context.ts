@@ -74,3 +74,53 @@ export function createEngineContext(args: {
     config: mergedConfig,
   };
 }
+
+// engine.context.ts
+
+export type Sex = "male" | "female";
+
+export type ActivityLevel =
+  | "sedentary"
+  | "occasional"
+  | "regular"
+  | "sporty"
+  | "intensive"
+  | "athletic";
+
+export interface UserProfile {
+  sex: Sex;
+  age: number;   // years
+  weight: number; // kg
+  activityLevel: ActivityLevel;
+}
+
+export type CarbMealType = "high" | "moderate" | "low";
+
+export interface CarbCyclingContext {
+  /** type de journée calculée ou imposée */
+  dayType?: CarbMealType;
+
+  /** selon l'habitude d'activité */
+  activityLevel?: ActivityLevel;
+
+  /** séance aujourd’hui ? (et idéalement timing) */
+  hasWorkoutToday?: boolean;
+  workoutDone?: boolean; // true si séance déjà faite
+  workoutIntensity?: number; // 0..1 (optionnel)
+  previousCarbTypes?: Array<"high"|"moderate"|"low">;
+
+  /** anti-adaptation: historique court */
+  previousMealTypes?: CarbMealType[]; // ex: ["high","moderate","low"]
+}
+
+export interface EngineContext {
+  foods: ReadonlyArray<Food>;
+  constraints: FoodConstraints;
+  targets: Macros;
+  config: EngineConfig;
+
+  // 🔽 NOUVEAU (optionnel, rétro-compatible)
+  user?: UserProfile;
+  carbCycling?: CarbCyclingContext;
+}
+

@@ -11,6 +11,7 @@ import { computeMacroWarnings } from "../nutrition/warnings";
 import { targetsToRanges } from "../nutrition/targets";
 import { DEFAULT_MACRO_TARGETS } from "../nutrition/targets";
 import { generateMealSuggestions } from "./suggestions";
+import { classifyCarbMeal } from "./carb.classifier";
 
 /* ============================================================================
  * Utils
@@ -178,6 +179,8 @@ export function generateMeals(
     const score = scoreMacrosSimple(macros);
     const warnings = computeMacroWarnings(macros, macroRanges);
 
+    const carbType = classifyCarbMeal(macros);
+
     const suggestions = generateMealSuggestions({
       meal,
       warnings,
@@ -191,6 +194,7 @@ export function generateMeals(
       score,
       warnings,
       suggestions,
+      carbType, // ← ajouté
     });
   }
 

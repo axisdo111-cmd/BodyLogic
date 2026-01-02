@@ -17,6 +17,10 @@ export interface DayPlan {
 export function generateDayPlan(args: {
   mealsPool: MealWithAnalysis[];
   mealsPerDay: number;
+
+  // 🔽 BodyLogic
+  carbPattern?: Array<"high" | "moderate" | "low">;
+
 }): DayPlan | null {
   const { mealsPool, mealsPerDay } = args;
 

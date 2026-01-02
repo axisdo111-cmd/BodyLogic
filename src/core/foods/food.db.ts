@@ -36,7 +36,9 @@ function f(
  * Valeurs approximatives, standardisées / 100g
  */
 export const FOOD_DB: ReadonlyArray<Food> = Object.freeze([
-  // ===== PROTEINS =====
+  /**
+   *  ===== PROTEINS =====
+   */
   f(
   "chicken_breast",
   "Chicken breast",
@@ -109,7 +111,9 @@ f(
     "high_protein",
   ]),
 
-  // ===== CARBS =====
+  /**
+   *  ===== CARBS =====
+   */
   f(
   "rice_white",
   "White rice (cooked)",
@@ -163,7 +167,9 @@ f(
     "gluten_free",
   ]),
 
-  // ===== FATS =====
+  /**
+   *  ===== FATS =====
+   */
   f(
   "olive_oil",
   "Olive oil",
@@ -209,7 +215,9 @@ f(
 ),
   f("butter", "Butter", "fat", m(717, 0.9, 0.1, 81), ["vegetarian"]),
 
-  // ===== VEGETABLES =====
+  /**
+   *  ===== VEGETABLES =====
+   */
 f(
   "broccoli",
   "Broccoli",
@@ -292,8 +300,11 @@ f(
   }
 ),
 
-  // ===== MIXED =====
-  f("lentils_cooked", "Lentils (cooked)", "mixed", m(116, 9, 20, 0.4), [
+/**
+ *  ===== MIXED =====
+ */
+  f(
+    "lentils_cooked", "Lentils (cooked)", "mixed", m(116, 9, 20, 0.4), [
     "vegan",
     "vegetarian",
     "gluten_free",
